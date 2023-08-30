@@ -3786,6 +3786,14 @@ static int hidpp_input_mapped(struct hid_device *hdev, struct hid_input *hi,
 {
 	struct hidpp_device *hidpp = hid_get_drvdata(hdev);
 
+	if (hdev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL) {
+		if (usage->type == EV_ABS && (usage->code == ABS_X ||
+				usage->code == ABS_Y || usage->code == ABS_Z ||
+				usage->code == ABS_RZ)) {
+			field->application = HID_GD_MULTIAXIS;
+		}
+	}
+	
 	if (!hidpp)
 		return 0;
 
