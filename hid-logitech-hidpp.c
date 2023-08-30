@@ -2793,6 +2793,7 @@ static int hidpp_ff_init(struct hidpp_device *hidpp,
 	struct hid_device *hid = hidpp->hid_dev;
 	struct hid_input *hidinput;
 	struct input_dev *dev;
+	struct usb_interface *iface;
 	struct usb_device_descriptor *udesc;
 	u16 bcdDevice;
 	struct ff_device *ff;
@@ -2804,10 +2805,9 @@ static int hidpp_ff_init(struct hidpp_device *hidpp,
 		return -ENODEV;
 	}
 
-	struct usb_interface *iface = to_usb_interface(hid->dev.parent);
-
 	//   Try to find inputs on boot interface if we have ffb initialization
-	// not on the first device
+	// not on the first interface (G Pro Wheel for example)
+	iface = to_usb_interface(hid->dev.parent);
 	if (hidpp->quirks & HIDPP_QUIRK_CLASS_G920 && 
 		iface->cur_altsetting->desc.bInterfaceNumber != 0)
 		hid = usb_get_intfdata(usb_ifnum_to_if(hid_to_usb_dev(hid), 0));
