@@ -2801,12 +2801,13 @@ static int hidpp_ff_init(struct hidpp_device *hidpp,
 		return -ENODEV;
 	}
 
-	// Try to find inputs on boot interface if we have g pro wheel
-	struct usb_device *usb_dev = hid_to_usb_dev(hid);
-	struct usb_interface *boot_interface = usb_ifnum_to_if(usb_dev, 0);
+	struct usb_interface *iface = to_usb_interface(hid->dev.parent);
 
-	if (hid->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL)
-		hid = usb_get_intfdata(boot_interface);
+	//   Try to find inputs on boot interface if we have ffb initialization
+	// not on the first device
+	if (hidpp->quirks & HIDPP_QUIRK_CLASS_G920 && 
+		iface->cur_altsetting->desc.bInterfaceNumber != 0)
+		hid = usb_get_intfdata(usb_ifnum_to_if(hid_to_usb_dev(hid), 0));
 
 	if (list_empty(&hid->inputs)) {
 		hid_err(hid, "no inputs found\n");
@@ -3780,18 +3781,26 @@ static int hidpp_input_mapping(struct hid_device *hdev, struct hid_input *hi,
 	return 0;
 }
 
+static int hidpp_input_setup_wheel(struct hid_device *hdev, struct hid_field *field, 
+		struct hid_usage *usage) 
+{
+	if (usage->type == EV_ABS && (usage->code == ABS_X ||
+				usage->code == ABS_Y || usage->code == ABS_Z ||
+				usage->code == ABS_RZ)) {
+		field->application = HID_GD_MULTIAXIS;
+	}
+}
+
 static int hidpp_input_mapped(struct hid_device *hdev, struct hid_input *hi,
 		struct hid_field *field, struct hid_usage *usage,
 		unsigned long **bit, int *max)
 {
 	struct hidpp_device *hidpp = hid_get_drvdata(hdev);
 
+	/* Input interface on G Pro Xbox is different from HIDPP interface */
+	/*  And we do not have the info about quirks 					   */
 	if (hdev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL) {
-		if (usage->type == EV_ABS && (usage->code == ABS_X ||
-				usage->code == ABS_Y || usage->code == ABS_Z ||
-				usage->code == ABS_RZ)) {
-			field->application = HID_GD_MULTIAXIS;
-		}
+		hidpp_input_setup_wheel(hdev, field, usage);
 	}
 	
 	if (!hidpp)
@@ -3799,11 +3808,7 @@ static int hidpp_input_mapped(struct hid_device *hdev, struct hid_input *hi,
 
 	/* Ensure that Logitech G920 is not given a default fuzz/flat value */
 	if (hidpp->quirks & HIDPP_QUIRK_CLASS_G920) {
-		if (usage->type == EV_ABS && (usage->code == ABS_X ||
-				usage->code == ABS_Y || usage->code == ABS_Z ||
-				usage->code == ABS_RZ)) {
-			field->application = HID_GD_MULTIAXIS;
-		}
+		hidpp_input_setup_wheel(hdev, field, usage);
 	}
 
 	return 0;
