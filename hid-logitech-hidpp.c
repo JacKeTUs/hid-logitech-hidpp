@@ -2760,7 +2760,10 @@ static ssize_t hidpp_ff_range_store(struct device *dev, struct device_attribute 
 	u8 params[2];
 	int range = simple_strtoul(buf, NULL, 10);
 
-	range = clamp(range, 180, 900);
+	if (hid->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL)
+		range = clamp(range, 180, 1080);
+	else
+		range = clamp(range, 180, 900);
 
 	params[0] = range >> 8;
 	params[1] = range & 0x00FF;
@@ -3418,6 +3421,7 @@ static int g920_get_config(struct hidpp_device *hidpp,
 	struct hidpp_report response;
 	u8 feature_type;
 	int ret;
+	int max_angle;
 
 	memset(data, 0, sizeof(*data));
 
@@ -3458,8 +3462,13 @@ static int g920_get_config(struct hidpp_device *hidpp,
 		hid_warn(hidpp->hid_dev,
 			 "Failed to read range from device!\n");
 	}
+	if (hidpp->hid_dev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL)
+		max_angle = 1080;
+	else
+		max_angle = 900;
+
 	data->range = ret ?
-		900 : get_unaligned_be16(&response.fap.params[0]);
+		max_angle : get_unaligned_be16(&response.fap.params[0]);
 
 	/* Read the current gain values */
 	ret = hidpp_send_fap_command_sync(hidpp, data->feature_index,
