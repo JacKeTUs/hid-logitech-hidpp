@@ -2801,6 +2801,13 @@ static int hidpp_ff_init(struct hidpp_device *hidpp,
 		return -ENODEV;
 	}
 
+	// Try to find inputs on boot interface if we have g pro wheel
+	struct usb_device *usb_dev = hid_to_usb_dev(hid);
+	struct usb_interface *boot_interface = usb_ifnum_to_if(usb_dev, 0);
+
+	if (hid->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL)
+		hid = usb_get_intfdata(boot_interface);
+
 	if (list_empty(&hid->inputs)) {
 		hid_err(hid, "no inputs found\n");
 		return -ENODEV;
