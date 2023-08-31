@@ -3807,9 +3807,12 @@ static int hidpp_input_mapped(struct hid_device *hdev, struct hid_input *hi,
 {
 	struct hidpp_device *hidpp = hid_get_drvdata(hdev);
 
-	/* Input interface on G Pro Xbox is different from HIDPP interface */
-	/*  And we do not have the info about quirks 					   */
-	if (hdev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL) {
+	/* Input interface on G Pro Xbox and G Pro in G923 compatibility mode
+	 * is different from HIDPP interface, and we do not have information
+	 * about hidpp quirks here
+	*/
+	if (hdev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL | 
+		hdev->product == USB_DEVICE_ID_LOGITECH_G923_XBOX_WHEEL) {
 		hidpp_input_setup_wheel(hdev, field, usage);
 	}
 	
