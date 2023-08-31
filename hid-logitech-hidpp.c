@@ -3813,7 +3813,8 @@ static int hidpp_input_mapped(struct hid_device *hdev, struct hid_input *hi,
 	*/
 	if (hdev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL | 
 		hdev->product == USB_DEVICE_ID_LOGITECH_G923_XBOX_WHEEL) {
-		hidpp_input_setup_wheel(hdev, field, usage);
+		hid_warn(hdev, 
+			"Ignore setting multiaxis input. There will be default fuzz/flat values\n");
 	}
 	
 	if (!hidpp)
