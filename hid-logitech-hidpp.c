@@ -3610,6 +3610,59 @@ static void hidpp10_extra_mouse_buttons_populate_input(
 	__set_bit(BTN_7, input_dev->keybit);
 }
 
+static const u8 g_pro_rdesc_fixup[] = {
+	0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+	0x09, 0x04,        // Usage (Joystick)
+	0xA1, 0x01,        // Collection (Application)
+	0xA1, 0x02,        //   Collection (Logical)
+	0x09, 0x39,        //   Usage (Hat switch)
+	0x15, 0x00,        //   Logical Minimum (0)
+	0x25, 0x07,        //   Logical Maximum (7)
+	0x35, 0x00,        //   Physical Minimum (0)
+	0x46, 0x3B, 0x01,  //   Physical Maximum (315)
+	0x65, 0x14,        //   Unit (System: English Rotation, Length: Centimeter)
+	0x75, 0x04,        //   Report Size (4)
+	0x95, 0x01,        //   Report Count (1)
+	0x81, 0x42,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,Null State)
+	0x05, 0x09,        //   Usage Page (Button)
+	0x19, 0x01,        //   Usage Minimum (0x01)
+	0x29, 0x1C,        //   Usage Maximum (0x1C)
+	0x65, 0x00,        //   Unit (None)
+	0x25, 0x01,        //   Logical Maximum (1)
+	0x45, 0x01,        //   Physical Maximum (1)
+	0x75, 0x01,        //   Report Size (1)
+	0x95, 0x1C,        //   Report Count (28)
+	0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0x05, 0x01,        //   Usage Page (Generic Desktop Ctrls)
+	0x09, 0x30,        //   Usage (X)
+	0x27, 0xFF, 0xFF, 0x00, 0x00,  //   Logical Maximum (65534)
+	0x47, 0xFF, 0xFF, 0x00, 0x00,  //   Physical Maximum (65534)
+	0x75, 0x10,        //   Report Size (16)
+	0x95, 0x01,        //   Report Count (1)
+	0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0x09, 0x33,        //   Usage (Rx)
+	0x09, 0x34,        //   Usage (Ry)
+	0x09, 0x35,        //   Usage (Rz)
+	0x09, 0x32,        //   Usage (Z)
+	0x09, 0x36,        //   Usage (Slider)
+	0x09, 0x37,        //   Usage (Dial)
+	0x65, 0x00,        //   Unit (None)
+	0x75, 0x10,        //   Report Size (16)
+	0x95, 0x06,        //   Report Count (6)
+	0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0x06, 0x00, 0xFF,  //   Usage Page (Vendor Defined 0xFF00)
+	0x25, 0x01,        //   Logical Maximum (1)
+	0x45, 0x01,        //   Physical Maximum (1)
+	0x19, 0x00,        //   Usage Minimum (0x00)
+	0x29, 0x07,        //   Usage Maximum (0x07)
+	0x75, 0x01,        //   Report Size (1)
+	0x95, 0x08,        //   Report Count (8)
+	0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0xC0,              // End Collection
+	0xC0
+	// 101 bytes
+};
+
 /* -------------------------------------------------------------------------- */
 /* HID++1.0 kbds which only report 0x10xx consumer usages through sub-id 0x03 */
 /* -------------------------------------------------------------------------- */
@@ -3642,6 +3695,25 @@ static u8 *hidpp10_consumer_keys_report_fixup(struct hidpp_device *hidpp,
 	}
 	return _rdesc;
 }
+
+
+static u8 *g_pro_report_fixup(struct hid_device *hdev, 
+					      u8 *rdesc, unsigned int *rsize)
+{
+	u8 *new_rdesc;
+
+	if (*rsize == 101) {
+		new_rdesc = devm_kzalloc(&hdev->dev, sizeof(g_pro_rdesc_fixup), GFP_KERNEL);
+		if (new_rdesc == NULL)
+			return rdesc;
+		hid_info(hdev, "fixing G Pro report descriptor.\n");
+		memcpy(new_rdesc, g_pro_rdesc_fixup, sizeof(g_pro_rdesc_fixup));
+		*rsize = sizeof(g_pro_rdesc_fixup);
+		rdesc = new_rdesc;
+	}
+	return rdesc;
+}
+
 
 static int hidpp10_consumer_keys_connect(struct hidpp_device *hidpp)
 {
@@ -3765,6 +3837,10 @@ static u8 *hidpp_report_fixup(struct hid_device *hdev, u8 *rdesc,
 	if (hdev->group == HID_GROUP_LOGITECH_27MHZ_DEVICE ||
 	    (hidpp->quirks & HIDPP_QUIRK_HIDPP_CONSUMER_VENDOR_KEYS))
 		rdesc = hidpp10_consumer_keys_report_fixup(hidpp, rdesc, rsize);
+
+
+	if (hdev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL)
+		rdesc = g_pro_report_fixup(hdev, rdesc, rsize);
 
 	return rdesc;
 }
