@@ -3869,6 +3869,7 @@ static int hidpp_input_mapping(struct hid_device *hdev, struct hid_input *hi,
 static int hidpp_input_setup_wheel(struct hid_device *hdev, struct hid_field *field, 
 		struct hid_usage *usage) 
 {
+	hid_info(hdev, "Setup multiaxis on the wheel");
 	if (usage->type == EV_ABS && (usage->code == ABS_X ||
 				usage->code == ABS_Y || usage->code == ABS_Z ||
 				usage->code == ABS_RZ)) {
@@ -3887,7 +3888,7 @@ static int hidpp_input_mapped(struct hid_device *hdev, struct hid_input *hi,
 	 * is different from HIDPP interface, and we do not have information
 	 * about hidpp quirks here
 	*/
-	if (hdev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL | 
+	if (hdev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL ||
 		hdev->product == USB_DEVICE_ID_LOGITECH_G923_XBOX_WHEEL) {
 		hidpp_input_setup_wheel(hdev, field, usage);
 	}
