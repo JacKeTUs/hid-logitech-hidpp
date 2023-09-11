@@ -3642,7 +3642,7 @@ static const u8 g_pro_rdesc_fixup[] = {
 	0x09, 0x33,        //   Usage (Rx)
 	0x09, 0x34,        //   Usage (Ry)
 	0x09, 0x35,        //   Usage (Rz)
-	0x09, 0x31,        //   Usage (Z)
+	0x09, 0x31,        //   Usage (Y)
 	0x09, 0x36,        //   Usage (Slider)
 	0x09, 0x37,        //   Usage (Dial)
 	0x65, 0x00,        //   Unit (None)
