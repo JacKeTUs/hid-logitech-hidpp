@@ -328,6 +328,65 @@ exit:
 
 }
 
+
+static int hidpp_send_message_async_ignore(struct hidpp_device *hidpp,
+	struct hidpp_report *message,
+	struct hidpp_report *response)
+{
+	int ret;
+
+	mutex_lock(&hidpp->send_mutex);
+
+	hidpp->send_receive_buf = response;
+	hidpp->answer_available = false;
+
+	/*
+	 * So that we can later validate the answer when it arrives
+	 * in hidpp_raw_event
+	 */
+	*response = *message;
+
+	ret = __hidpp_send_report(hidpp->hid_dev, message);
+
+	if (ret) {
+		pr_info("__hidpp_send_report returned err: %d\n", ret);
+		memset(response, 0, sizeof(struct hidpp_report));
+		goto exit;
+	}
+
+exit:
+	mutex_unlock(&hidpp->send_mutex);
+	return ret;
+}
+
+static int hidpp_send_ffb_command(struct hidpp_device *hidpp,
+	u8 feat_index, u8 funcindex_clientid, u8 *params, int param_count,
+	struct hidpp_report *response)
+{
+	struct hidpp_report *message;
+	int ret;
+
+	if (param_count > sizeof(message->fap.params))
+		return -EINVAL;
+
+	message = kzalloc(sizeof(struct hidpp_report), GFP_KERNEL);
+	if (!message)
+		return -ENOMEM;
+
+	if (param_count > (HIDPP_REPORT_LONG_LENGTH - 4))
+		message->report_id = REPORT_ID_HIDPP_VERY_LONG;
+	else
+		message->report_id = REPORT_ID_HIDPP_LONG;
+	message->fap.feature_index = feat_index;
+	message->fap.funcindex_clientid = funcindex_clientid | LINUX_KERNEL_SW_ID;
+	memcpy(&message->fap.params, params, param_count);
+
+	ret = hidpp_send_message_async_ignore(hidpp, message, response);
+	kfree(message);
+	return ret;
+}
+
+
 static int hidpp_send_fap_command_sync(struct hidpp_device *hidpp,
 	u8 feat_index, u8 funcindex_clientid, u8 *params, int param_count,
 	struct hidpp_report *response)
@@ -2271,7 +2330,7 @@ static void hidpp_ff_work_handler(struct work_struct *w)
 	}
 
 	/* send command and wait for reply */
-	ret = hidpp_send_fap_command_sync(data->hidpp, data->feature_index,
+	ret = hidpp_send_ffb_command(data->hidpp, data->feature_index,
 		wd->command, wd->params, wd->size, &response);
 
 	if (ret) {
