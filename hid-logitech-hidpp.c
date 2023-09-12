@@ -374,6 +374,11 @@ static int hidpp_send_message_async_ignore(struct hidpp_device *hidpp,
 		pr_info("%s:got hidpp 2.0 error %02X\n", __func__, ret);
 		goto exit;
 	}
+
+exit:
+	mutex_unlock(&hidpp->send_mutex);
+	return ret;
+
 }
 
 static int hidpp_send_ffb_command(struct hidpp_device *hidpp,
