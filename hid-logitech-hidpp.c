@@ -295,14 +295,14 @@ static int hidpp_send_message_sync(struct hidpp_device *hidpp,
 	ret = __hidpp_send_report(hidpp->hid_dev, message);
 
 	if (ret) {
-		dbg_hid("__hidpp_send_report returned err: %d\n", ret);
+		pr_info("__hidpp_send_report returned err: %d\n", ret);
 		memset(response, 0, sizeof(struct hidpp_report));
 		goto exit;
 	}
 
 	if (!wait_event_timeout(hidpp->wait, hidpp->answer_available,
 				5*HZ)) {
-		dbg_hid("%s:timeout waiting for response\n", __func__);
+		pr_info("%s:timeout waiting for response\n", __func__);
 		memset(response, 0, sizeof(struct hidpp_report));
 		ret = -ETIMEDOUT;
 	}
@@ -310,7 +310,7 @@ static int hidpp_send_message_sync(struct hidpp_device *hidpp,
 	if (response->report_id == REPORT_ID_HIDPP_SHORT &&
 	    response->rap.sub_id == HIDPP_ERROR) {
 		ret = response->rap.params[1];
-		dbg_hid("%s:got hidpp error %02X\n", __func__, ret);
+		pr_info("%s:got hidpp error %02X\n", __func__, ret);
 		goto exit;
 	}
 
@@ -318,7 +318,7 @@ static int hidpp_send_message_sync(struct hidpp_device *hidpp,
 			response->report_id == REPORT_ID_HIDPP_VERY_LONG) &&
 			response->fap.feature_index == HIDPP20_ERROR) {
 		ret = response->fap.params[1];
-		dbg_hid("%s:got hidpp 2.0 error %02X\n", __func__, ret);
+		pr_info("%s:got hidpp 2.0 error %02X\n", __func__, ret);
 		goto exit;
 	}
 
@@ -839,14 +839,14 @@ static int hidpp_unifying_init(struct hidpp_device *hidpp)
 		return ret;
 
 	snprintf(hdev->uniq, sizeof(hdev->uniq), "%4phD", &serial);
-	dbg_hid("HID++ Unifying: Got serial: %s\n", hdev->uniq);
+	pr_info("HID++ Unifying: Got serial: %s\n", hdev->uniq);
 
 	name = hidpp_unifying_get_name(hidpp);
 	if (!name)
 		return -EIO;
 
 	snprintf(hdev->name, sizeof(hdev->name), "%s", name);
-	dbg_hid("HID++ Unifying: Got name: %s\n", name);
+	pr_info("HID++ Unifying: Got name: %s\n", name);
 
 	kfree(name);
 	return 0;
@@ -974,7 +974,7 @@ static int hidpp_serial_init(struct hidpp_device *hidpp)
 		return ret;
 
 	snprintf(hdev->uniq, sizeof(hdev->uniq), "%4phD", &serial);
-	dbg_hid("HID++ DeviceInformation: Got serial: %s\n", hdev->uniq);
+	pr_info("HID++ DeviceInformation: Got serial: %s\n", hdev->uniq);
 
 	return 0;
 }
@@ -2368,10 +2368,10 @@ static int hidpp_ff_upload_effect(struct input_dev *dev, struct ff_effect *effec
 		params[12] = effect->u.constant.envelope.fade_length >> 8;
 		params[13] = effect->u.constant.envelope.fade_length & 255;
 		size = 14;
-		dbg_hid("Uploading constant force level=%d in dir %d = %d\n",
+		pr_info("Uploading constant force level=%d in dir %d = %d\n",
 				effect->u.constant.level,
 				effect->direction, force);
-		dbg_hid("          envelope attack=(%d, %d ms) fade=(%d, %d ms)\n",
+		pr_info("          envelope attack=(%d, %d ms) fade=(%d, %d ms)\n",
 				effect->u.constant.envelope.attack_level,
 				effect->u.constant.envelope.attack_length,
 				effect->u.constant.envelope.fade_level,
@@ -2415,12 +2415,12 @@ static int hidpp_ff_upload_effect(struct input_dev *dev, struct ff_effect *effec
 		params[18] = effect->u.periodic.envelope.fade_length >> 8;
 		params[19] = effect->u.periodic.envelope.fade_length & 255;
 		size = 20;
-		dbg_hid("Uploading periodic force mag=%d/dir=%d, offset=%d, period=%d ms, phase=%d\n",
+		pr_info("Uploading periodic force mag=%d/dir=%d, offset=%d, period=%d ms, phase=%d\n",
 				effect->u.periodic.magnitude, effect->direction,
 				effect->u.periodic.offset,
 				effect->u.periodic.period,
 				effect->u.periodic.phase);
-		dbg_hid("          envelope attack=(%d, %d ms) fade=(%d, %d ms)\n",
+		pr_info("          envelope attack=(%d, %d ms) fade=(%d, %d ms)\n",
 				effect->u.periodic.envelope.attack_level,
 				effect->u.periodic.envelope.attack_length,
 				effect->u.periodic.envelope.fade_level,
@@ -2442,11 +2442,11 @@ static int hidpp_ff_upload_effect(struct input_dev *dev, struct ff_effect *effec
 		params[14] = effect->u.ramp.envelope.fade_length >> 8;
 		params[15] = effect->u.ramp.envelope.fade_length & 255;
 		size = 16;
-		dbg_hid("Uploading ramp force level=%d -> %d in dir %d = %d\n",
+		pr_info("Uploading ramp force level=%d -> %d in dir %d = %d\n",
 				effect->u.ramp.start_level,
 				effect->u.ramp.end_level,
 				effect->direction, force);
-		dbg_hid("          envelope attack=(%d, %d ms) fade=(%d, %d ms)\n",
+		pr_info("          envelope attack=(%d, %d ms) fade=(%d, %d ms)\n",
 				effect->u.ramp.envelope.attack_level,
 				effect->u.ramp.envelope.attack_length,
 				effect->u.ramp.envelope.fade_level,
@@ -2470,13 +2470,13 @@ static int hidpp_ff_upload_effect(struct input_dev *dev, struct ff_effect *effec
 		params[16] = effect->u.condition[0].right_saturation >> 9;
 		params[17] = (effect->u.condition[0].right_saturation >> 1) & 255;
 		size = 18;
-		dbg_hid("Uploading %s force left coeff=%d, left sat=%d, right coeff=%d, right sat=%d\n",
+		pr_info("Uploading %s force left coeff=%d, left sat=%d, right coeff=%d, right sat=%d\n",
 				HIDPP_FF_CONDITION_NAMES[effect->type - FF_SPRING],
 				effect->u.condition[0].left_coeff,
 				effect->u.condition[0].left_saturation,
 				effect->u.condition[0].right_coeff,
 				effect->u.condition[0].right_saturation);
-		dbg_hid("          deadband=%d, center=%d\n",
+		pr_info("          deadband=%d, center=%d\n",
 				effect->u.condition[0].deadband,
 				effect->u.condition[0].center);
 		break;
@@ -2495,7 +2495,7 @@ static int hidpp_ff_playback(struct input_dev *dev, int effect_id, int value)
 
 	params[1] = value ? HIDPP_FF_EFFECT_STATE_PLAY : HIDPP_FF_EFFECT_STATE_STOP;
 
-	dbg_hid("St%sing playback of effect %d.\n", value?"art":"opp", effect_id);
+	pr_info("St%sing playback of effect %d.\n", value?"art":"opp", effect_id);
 
 	return hidpp_ff_queue_work(data, effect_id, HIDPP_FF_SET_EFFECT_STATE, params, ARRAY_SIZE(params));
 }
@@ -2505,7 +2505,7 @@ static int hidpp_ff_erase_effect(struct input_dev *dev, int effect_id)
 	struct hidpp_ff_private_data *data = dev->ff->private;
 	u8 slot = 0;
 
-	dbg_hid("Erasing effect %d.\n", effect_id);
+	pr_info("Erasing effect %d.\n", effect_id);
 
 	return hidpp_ff_queue_work(data, effect_id, HIDPP_FF_DESTROY_EFFECT, &slot, 1);
 }
@@ -2515,7 +2515,7 @@ static void hidpp_ff_set_autocenter(struct input_dev *dev, u16 magnitude)
 	struct hidpp_ff_private_data *data = dev->ff->private;
 	u8 params[HIDPP_AUTOCENTER_PARAMS_LENGTH];
 
-	dbg_hid("Setting autocenter to %d.\n", magnitude);
+	pr_info("Setting autocenter to %d.\n", magnitude);
 
 	/* start a standard spring effect */
 	params[1] = HIDPP_FF_EFFECT_SPRING | HIDPP_FF_EFFECT_AUTOSTART;
@@ -2537,7 +2537,7 @@ static void hidpp_ff_set_gain(struct input_dev *dev, u16 gain)
 	struct hidpp_ff_private_data *data = dev->ff->private;
 	u8 params[4];
 
-	dbg_hid("Setting gain to %d.\n", gain);
+	pr_info("Setting gain to %d.\n", gain);
 
 	params[0] = gain >> 8;
 	params[1] = gain & 255;
@@ -3208,7 +3208,7 @@ static int g920_ff_set_autocenter(struct hidpp_device *hidpp,
 
 	/* initialize with zero autocenter to get wheel in usable state */
 
-	dbg_hid("Setting autocenter to 0.\n");
+	pr_info("Setting autocenter to 0.\n");
 	ret = hidpp_send_fap_command_sync(hidpp, data->feature_index,
 					  HIDPP_FF_DOWNLOAD_EFFECT,
 					  params, ARRAY_SIZE(params),
@@ -3772,7 +3772,7 @@ static int hidpp_raw_hidpp_event(struct hidpp_device *hidpp, u8 *data,
 		atomic_set(&hidpp->connected,
 				!(report->rap.params[0] & (1 << 6)));
 		if (schedule_work(&hidpp->work) == 0)
-			dbg_hid("%s: connect event already queued\n", __func__);
+			pr_info("%s: connect event already queued\n", __func__);
 		return 1;
 	}
 
@@ -4011,7 +4011,7 @@ static void hidpp_overwrite_name(struct hid_device *hdev)
 	if (!name) {
 		hid_err(hdev, "unable to retrieve the name of the device");
 	} else {
-		dbg_hid("HID++: Got name: %s\n", name);
+		pr_info("HID++: Got name: %s\n", name);
 		snprintf(hdev->name, sizeof(hdev->name), "%s", name);
 	}
 
