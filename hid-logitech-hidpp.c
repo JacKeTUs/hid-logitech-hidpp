@@ -354,9 +354,26 @@ static int hidpp_send_message_async_ignore(struct hidpp_device *hidpp,
 		goto exit;
 	}
 
-exit:
-	mutex_unlock(&hidpp->send_mutex);
-	return ret;
+	if (!wait_event_timeout(hidpp->wait, hidpp->answer_available, HZ/5)) {
+		pr_info("%s:timeout waiting for response\n", __func__);
+		memset(response, 0, sizeof(struct hidpp_report));
+		ret = -ETIMEDOUT;
+	}
+
+	if (response->report_id == REPORT_ID_HIDPP_SHORT &&
+	    response->rap.sub_id == HIDPP_ERROR) {
+		ret = response->rap.params[1];
+		pr_info("%s:got hidpp error %02X\n", __func__, ret);
+		goto exit;
+	}
+
+	if ((response->report_id == REPORT_ID_HIDPP_LONG ||
+			response->report_id == REPORT_ID_HIDPP_VERY_LONG) &&
+			response->fap.feature_index == HIDPP20_ERROR) {
+		ret = response->fap.params[1];
+		pr_info("%s:got hidpp 2.0 error %02X\n", __func__, ret);
+		goto exit;
+	}
 }
 
 static int hidpp_send_ffb_command(struct hidpp_device *hidpp,
