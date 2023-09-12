@@ -1,12 +1,16 @@
 KVERSION := `uname -r`
 KDIR := /lib/modules/${KVERSION}/build
+MY_CFLAGS += -g -DDEBUG
 
 LSMOD_GREP = $(shell lsmod | grep "hid_logitech_hidpp")
 LSUSB_GREP = $(shell lsusb | grep "Logitech, Inc. PRO Racing Wheel")
 
 
 default:
-	$(MAKE) -C $(KDIR) M=$$PWD
+	$(MAKE) -C $(KDIR) M=$$PWD modules
+
+debug:
+	$(MAKE) -C $(KDIR) M=$$PWD modules EXTRA_CFLAGS="$(MY_CFLAGS)"
 
 install: default
 	$(MAKE) -C $(KDIR) M=$$PWD modules_install
