@@ -2795,7 +2795,10 @@ static ssize_t hidpp_ff_range_store(struct device *dev, struct device_attribute 
 	u8 params[2];
 	int range = simple_strtoul(buf, NULL, 10);
 
-	range = clamp(range, 180, 900);
+	if (hid->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL)
+		range = clamp(range, 180, 1080);
+	else
+		range = clamp(range, 180, 900);
 
 	params[0] = range >> 8;
 	params[1] = range & 0x00FF;
@@ -2825,6 +2828,7 @@ static int hidpp_ff_init(struct hidpp_device *hidpp,
 	struct hid_device *hid = hidpp->hid_dev;
 	struct hid_input *hidinput;
 	struct input_dev *dev;
+	struct usb_interface *iface;
 	struct usb_device_descriptor *udesc;
 	u16 bcdDevice;
 	struct ff_device *ff;
@@ -2835,6 +2839,13 @@ static int hidpp_ff_init(struct hidpp_device *hidpp,
 		hid_err(hid, "device is not USB\n");
 		return -ENODEV;
 	}
+
+	//   Try to find inputs on boot interface if we have ffb initialization
+	// not on the first interface (G Pro Wheel for example)
+	iface = to_usb_interface(hid->dev.parent);
+	if (hidpp->quirks & HIDPP_QUIRK_CLASS_G920 && 
+		iface->cur_altsetting->desc.bInterfaceNumber != 0)
+		hid = usb_get_intfdata(usb_ifnum_to_if(hid_to_usb_dev(hid), 0));
 
 	if (list_empty(&hid->inputs)) {
 		hid_err(hid, "no inputs found\n");
@@ -3445,6 +3456,7 @@ static int g920_get_config(struct hidpp_device *hidpp,
 	struct hidpp_report response;
 	u8 feature_type;
 	int ret;
+	int max_angle;
 
 	memset(data, 0, sizeof(*data));
 
@@ -3485,8 +3497,13 @@ static int g920_get_config(struct hidpp_device *hidpp,
 		hid_warn(hidpp->hid_dev,
 			 "Failed to read range from device!\n");
 	}
+	if (hidpp->hid_dev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL)
+		max_angle = 1080;
+	else
+		max_angle = 900;
+
 	data->range = ret ?
-		900 : get_unaligned_be16(&response.fap.params[0]);
+		max_angle : get_unaligned_be16(&response.fap.params[0]);
 
 	/* Read the current gain values */
 	ret = hidpp_send_fap_command_sync(hidpp, data->feature_index,
@@ -3808,22 +3825,39 @@ static int hidpp_input_mapping(struct hid_device *hdev, struct hid_input *hi,
 	return 0;
 }
 
+static int hidpp_input_setup_wheel(struct hid_device *hdev, struct hid_field *field, 
+		struct hid_usage *usage) 
+{
+	hid_info(hdev, "Setup multiaxis on the wheel");
+	if (usage->type == EV_ABS && (usage->code == ABS_X ||
+				usage->code == ABS_Y || usage->code == ABS_Z ||
+				usage->code == ABS_RZ)) {
+		field->application = HID_GD_MULTIAXIS;
+	}
+	return 0;
+}
+
 static int hidpp_input_mapped(struct hid_device *hdev, struct hid_input *hi,
 		struct hid_field *field, struct hid_usage *usage,
 		unsigned long **bit, int *max)
 {
 	struct hidpp_device *hidpp = hid_get_drvdata(hdev);
 
+	/* Input interface on G Pro Xbox and G Pro in G923 compatibility mode
+	 * is different from HIDPP interface, and we do not have information
+	 * about hidpp quirks here
+	*/
+	if (hdev->product == USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL ||
+		hdev->product == USB_DEVICE_ID_LOGITECH_G923_XBOX_WHEEL) {
+		hidpp_input_setup_wheel(hdev, field, usage);
+	}
+	
 	if (!hidpp)
 		return 0;
 
 	/* Ensure that Logitech G920 is not given a default fuzz/flat value */
 	if (hidpp->quirks & HIDPP_QUIRK_CLASS_G920) {
-		if (usage->type == EV_ABS && (usage->code == ABS_X ||
-				usage->code == ABS_Y || usage->code == ABS_Z ||
-				usage->code == ABS_RZ)) {
-			field->application = HID_GD_MULTIAXIS;
-		}
+		hidpp_input_setup_wheel(hdev, field, usage);
 	}
 
 	return 0;
@@ -4654,6 +4688,9 @@ static const struct hid_device_id hidpp_devices[] = {
 	{ /* Logitech G923 Wheel (Xbox version) over USB */
 	  HID_USB_DEVICE(USB_VENDOR_ID_LOGITECH, USB_DEVICE_ID_LOGITECH_G923_XBOX_WHEEL),
 		.driver_data = HIDPP_QUIRK_CLASS_G920 | HIDPP_QUIRK_FORCE_OUTPUT_REPORTS },
+	{ /* Logitech G PRO Wheel (Xbox version) over USB */
+	  HID_USB_DEVICE(USB_VENDOR_ID_LOGITECH, USB_DEVICE_ID_LOGITECH_G_PRO_XBOX_WHEEL),
+		.driver_data = HIDPP_QUIRK_CLASS_G920 },
 	{ /* Logitech G Pro Gaming Mouse over USB */
 	  HID_USB_DEVICE(USB_VENDOR_ID_LOGITECH, 0xC088) },
 
